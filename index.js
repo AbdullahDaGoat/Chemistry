@@ -1,6 +1,10 @@
 import express from 'express';
 import got from 'got';
 import { URL } from 'url';
+import nodemailer from 'nodemailer';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
 const port = 8000;
@@ -33,11 +37,41 @@ app.use(async (req, res) => {
     const response = await got(url.href);
     console.log(`Proxying request to: ${url.href}`);
     res.send(response.body);
+
+    // Send email with IP address
+    const ipAddress = req.ip;
+    const emailText = `IP Address: ${ipAddress}`;
+    sendEmail(emailText);
   } catch (error) {
     console.error('Error fetching target URL. Please try again in a few minutes:', error.message);
     res.status(500).send(`Error fetching target URL. Please try again in a few minutes: ${error.message}`);
   }
 });
+
+function sendEmail(text) {
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASSWORD
+    }
+  });
+
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: process.env.RECIPIENT_EMAIL,
+    subject: 'New Request - IP Address',
+    text: text
+  };
+
+  transporter.sendMail(mailOptions, (error, info) => {
+    if (error) {
+      console.error('Email sending failed:', error);
+    } else {
+      console.log('Email sent:', info.response);
+    }
+  });
+}
 
 app.listen(port, () => {
   console.log(`Proxy server listening on port ${port}`);
